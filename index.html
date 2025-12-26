@@ -1445,6 +1445,29 @@
         let isAdmin = false;
         let currentEditId = null;
         
+        // ===== RANDOM IMAGE GENERATOR =====
+        function getRandomK3Image() {
+            const images = [
+                'https://images.unsplash.com/photo-1581094794329-c8112a89af12?q=80&w=2070', // Safety Gear
+                'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=2070', // Construction Safety
+                'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=2070', // Office Safety
+                'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2000', // Training
+                'https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2070', // Meeting Room
+                'https://images.unsplash.com/photo-1577412647305-991150c7d163?q=80&w=2070', // Work Environment
+                'https://images.unsplash.com/photo-1581092160607-ee22621ebc06?q=80&w=2070', // Equipment Safety
+                'https://images.unsplash.com/photo-1581092580497-e0d4cb184827?q=80&w=2070', // First Aid
+                'https://images.unsplash.com/photo-1581092580497-e0d4cb184827?q=80&w=2070', // Fire Safety
+                'https://images.unsplash.com/photo-1581092580497-e0d4cb184827?q=80&w=2070', // Chemical Safety
+            ];
+            return images[Math.floor(Math.random() * images.length)];
+        }
+        
+        function generateImageFromTitle(title) {
+            // Encode title untuk URL
+            const encodedTitle = encodeURIComponent(title.substring(0, 20));
+            return `https://placehold.co/600x400/ff4d94/ffffff?text=${encodedTitle}`;
+        }
+        
         // ===== THEME MANAGEMENT =====
         function toggleTheme() {
             const currentTheme = document.documentElement.getAttribute('data-theme');
@@ -1644,8 +1667,7 @@
                     .order('created_at', { ascending: false });
                 
                 console.log('📊 Supabase Response - Status:', status);
-                console.log('📦 Data:', data);
-                console.log('❌ Error:', error);
+                console.log('📦 Data received:', data);
                 
                 if (error) {
                     console.error('❌ Supabase error:', error);
@@ -1665,15 +1687,20 @@
                 }
                 
                 if (data && data.length > 0) {
-                    // Transform data
-                    db = data.map(item => ({
+                    // Transform data dengan gambar unik
+                    db = data.map((item, index) => ({
                         id: item.id,
-                        title: item.title,
-                        content: item.content,
-                        image: item.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2000',
+                        title: item.title || 'Tanpa Judul',
+                        content: item.content || 'Konten kosong',
+                        // Jika image kosong/null, generate gambar unik
+                        image: item.image && item.image.trim() !== '' 
+                            ? item.image 
+                            : getRandomK3Image(),
                         createdAt: item.created_at || new Date().toISOString(),
                         updatedAt: item.updated_at || new Date().toISOString()
                     }));
+                    
+                    console.log('✅ Transformed data:', db);
                     
                     // Save to localStorage
                     localStorage.setItem('k3_blossom_db', JSON.stringify(db));
@@ -1702,7 +1729,7 @@
                 const dataToSave = {
                     title: payload.title,
                     content: payload.content,
-                    image: payload.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2000',
+                    image: payload.image || getRandomK3Image(),
                     created_at: payload.createdAt || new Date().toISOString(),
                     updated_at: payload.updatedAt || new Date().toISOString()
                 };
@@ -1857,8 +1884,8 @@
                     id: currentEditId || Date.now(),
                     title, 
                     content,
-                    image: img || (currentEditId ? db.find(i => i.id === currentEditId)?.image : 
-                            'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2000'),
+                    // Gunakan gambar yang diupload, atau gambar random
+                    image: img || getRandomK3Image(),
                     createdAt: currentEditId ? db.find(i => i.id === currentEditId)?.createdAt : now,
                     updatedAt: now
                 };
@@ -1936,10 +1963,10 @@
                 
                 const cardHtml = `
                     <div class="card" onclick="openDetail(${item.id})">
-                        <img src="${item.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2000'}" 
+                        <img src="${item.image || getRandomK3Image()}" 
                              alt="${item.title}" 
                              loading="lazy"
-                             onerror="this.src='https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2000'">
+                             onerror="this.src='${getRandomK3Image()}'">
                         <div class="card-info">
                             <h3>${item.title}</h3>
                             <div class="card-date">
@@ -1979,11 +2006,11 @@
             });
             
             document.getElementById('detailContent').innerHTML = `
-                <img src="${item.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2000'}" 
+                <img src="${item.image || getRandomK3Image()}" 
                      class="detail-img" 
-                     onclick="zoom('${item.image || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2000'}')" 
+                     onclick="zoom('${item.image || getRandomK3Image()}')" 
                      alt="${item.title}"
-                     onerror="this.src='https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2000'">
+                     onerror="this.src='${getRandomK3Image()}'">
                 <h1 style="color: var(--hot-pink); font-size: 2.5rem; margin-bottom: 24px; line-height: 1.2;">
                     ${item.title}
                 </h1>
@@ -2108,6 +2135,39 @@
                 setTimeout(() => notification.remove(), 300);
             }, 3000);
         }
+        
+        // ===== DEBUG FUNCTIONS =====
+        function fixAllImages() {
+            console.log('🔄 Fixing all images...');
+            
+            const images = [
+                'https://images.unsplash.com/photo-1581094794329-c8112a89af12?q=80&w=2070',
+                'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=2070',
+                'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=2070',
+                'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2000',
+                'https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2070',
+                'https://images.unsplash.com/photo-1577412647305-991150c7d163?q=80&w=2070'
+            ];
+            
+            // Update local data
+            db = db.map((item, index) => ({
+                ...item,
+                image: images[index % images.length]
+            }));
+            
+            // Save to localStorage
+            localStorage.setItem('k3_blossom_db', JSON.stringify(db));
+            
+            // Render ulang
+            render();
+            
+            console.log('✅ Images fixed!');
+            showNotification('🔄 Gambar diperbarui dengan variasi berbeda!', 'success');
+        }
+        
+        // Untuk debug: tambahkan tombol di Console
+        window.fixImages = fixAllImages;
+        window.getRandomImage = getRandomK3Image;
         
         // ===== INITIALIZATION =====
         async function init() {
