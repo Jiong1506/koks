@@ -1418,7 +1418,6 @@
             try {
                 console.log('📚 Checking Supabase library...');
                 
-                // Cek apakah library sudah dimuat
                 if (!window.supabase || !window.supabase.createClient) {
                     console.error('❌ Supabase library not loaded!');
                     throw new Error('Supabase library gagal dimuat');
@@ -1426,7 +1425,6 @@
                 
                 console.log('✅ Supabase library loaded');
                 
-                // Inisialisasi Supabase
                 const supabaseUrl = 'https://amhggvcjkxlkulmyyedo.supabase.co';
                 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtaGdndmNqa3hsa3VsbXl5ZWRvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY3MDg3NzMsImV4cCI6MjA4MjI4NDc3M30.vljczJckNMeISqTo9oHhF_3z0pulaZSk2aW9hHd763w';
                 
@@ -1445,40 +1443,64 @@
         let isAdmin = false;
         let currentEditId = null;
         
-        // ===== LOCALSTORAGE HELPER (Dengan Error Handling) =====
+        // ===== LOCALSTORAGE OPTIMIZATION =====
+        function cleanDataForStorage(data) {
+            // Remove base64 images to save space
+            return data.map(item => {
+                const cleanedItem = { ...item };
+                
+                // If image is base64, replace with empty string or placeholder
+                if (cleanedItem.image && cleanedItem.image.startsWith('data:image')) {
+                    cleanedItem.image = '';
+                }
+                
+                // Truncate content if too long (keep only first 5000 chars)
+                if (cleanedItem.content && cleanedItem.content.length > 5000) {
+                    cleanedItem.content = cleanedItem.content.substring(0, 5000) + '...';
+                }
+                
+                return cleanedItem;
+            });
+        }
+        
         function saveToLocalStorage(key, data) {
             try {
-                // Bersihkan data lama sebelum menyimpan yang baru
-                localStorage.removeItem(key);
+                // Clean data before saving
+                const cleanedData = cleanDataForStorage(data);
                 
-                // Coba simpan data baru
-                localStorage.setItem(key, JSON.stringify(data));
+                // Convert to JSON and check size
+                const jsonData = JSON.stringify(cleanedData);
+                const sizeInMB = (new Blob([jsonData]).size / 1024 / 1024).toFixed(2);
+                
+                console.log(`💾 Saving ${cleanedData.length} items to localStorage (${sizeInMB} MB)`);
+                
+                if (sizeInMB > 4) {
+                    console.warn('⚠️ Data size exceeds 4MB, limiting to 20 items');
+                    // Keep only latest 20 items
+                    const limitedData = cleanedData.slice(0, 20);
+                    localStorage.setItem(key, JSON.stringify(limitedData));
+                } else {
+                    localStorage.setItem(key, jsonData);
+                }
+                
                 console.log(`✅ Data saved to localStorage (${key})`);
                 return true;
             } catch (error) {
                 console.error('❌ localStorage error:', error);
                 
-                // Jika localStorage penuh, coba bersihkan dan coba lagi
-                if (error.name === 'QuotaExceededError' || error.message.includes('quota')) {
-                    console.log('⚠️ localStorage penuh, mencoba membersihkan...');
-                    
+                if (error.name === 'QuotaExceededError') {
+                    console.log('⚠️ localStorage full, clearing old data...');
                     try {
-                        // Bersihkan semua data aplikasi K3
-                        localStorage.removeItem('k3_blossom_db');
-                        localStorage.removeItem('k3_theme');
-                        
-                        // Coba simpan lagi
-                        localStorage.setItem(key, JSON.stringify(data));
-                        console.log(`✅ Data saved after cleanup (${key})`);
+                        localStorage.removeItem(key);
+                        localStorage.setItem(key, JSON.stringify(data.slice(0, 10)));
+                        showNotification('⚠️ Penyimpanan lokal dibersihkan untuk data baru', 'warning');
                         return true;
-                    } catch (cleanupError) {
-                        console.error('❌ Masih gagal setelah cleanup:', cleanupError);
-                        showNotification('⚠️ Penyimpanan lokal penuh. Beberapa fitur mungkin terbatas.', 'warning');
+                    } catch (e) {
+                        console.error('❌ Still failing after cleanup:', e);
+                        showNotification('⚠️ Tidak bisa menyimpan data lokal', 'warning');
                         return false;
                     }
                 }
-                
-                showNotification('⚠️ Gagal menyimpan data lokal. ' + error.message, 'warning');
                 return false;
             }
         }
@@ -1486,34 +1508,26 @@
         function loadFromLocalStorage(key) {
             try {
                 const data = localStorage.getItem(key);
-                return data ? JSON.parse(data) : null;
+                return data ? JSON.parse(data) : [];
             } catch (error) {
                 console.error('❌ Error loading from localStorage:', error);
-                return null;
+                return [];
             }
         }
         
         // ===== RANDOM IMAGE GENERATOR =====
         function getRandomK3Image() {
             const images = [
-                'https://images.unsplash.com/photo-1581094794329-c8112a89af12?q=80&w=2070', // Safety Gear
-                'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=2070', // Construction Safety
-                'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=2070', // Office Safety
-                'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2000', // Training
-                'https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2070', // Meeting Room
-                'https://images.unsplash.com/photo-1577412647305-991150c7d163?q=80&w=2070', // Work Environment
-                'https://images.unsplash.com/photo-1581092160607-ee22621ebc06?q=80&w=2070', // Equipment Safety
-                'https://images.unsplash.com/photo-1581092580497-e0d4cb184827?q=80&w=2070', // First Aid
-                'https://images.unsplash.com/photo-1581092580497-e0d4cb184827?q=80&w=2070', // Fire Safety
-                'https://images.unsplash.com/photo-1581092580497-e0d4cb184827?q=80&w=2070', // Chemical Safety
+                'https://images.unsplash.com/photo-1581094794329-c8112a89af12?q=80&w=2070',
+                'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80&w=2070',
+                'https://images.unsplash.com/photo-1542744173-8e7e53415bb0?q=80&w=2070',
+                'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=2000',
+                'https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2070',
+                'https://images.unsplash.com/photo-1577412647305-991150c7d163?q=80&w=2070',
+                'https://images.unsplash.com/photo-1581092160607-ee22621ebc06?q=80&w=2070',
+                'https://images.unsplash.com/photo-1581092580497-e0d4cb184827?q=80&w=2070'
             ];
             return images[Math.floor(Math.random() * images.length)];
-        }
-        
-        function generateImageFromTitle(title) {
-            // Encode title untuk URL
-            const encodedTitle = encodeURIComponent(title.substring(0, 20));
-            return `https://placehold.co/600x400/ff4d94/ffffff?text=${encodedTitle}`;
         }
         
         // ===== THEME MANAGEMENT =====
@@ -1524,7 +1538,6 @@
             document.documentElement.style.transition = 'all 0.5s ease';
             document.documentElement.setAttribute('data-theme', newTheme);
             
-            // Simpan tema dengan error handling
             try {
                 localStorage.setItem('k3_theme', newTheme);
             } catch (error) {
@@ -1548,26 +1561,17 @@
         
         // ===== NAVIGATION =====
         function showView(viewId, el) {
-            // Hide all views
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            
-            // Show selected view
             document.getElementById('view-' + viewId).classList.add('active');
             
-            // Update menu active state
             if(el) {
                 document.querySelectorAll('.menu-item').forEach(m => m.classList.remove('active'));
                 document.querySelectorAll('.admin-menu-item').forEach(m => m.classList.remove('active'));
                 el.classList.add('active');
             }
             
-            // Manage FAB visibility
             updateFABVisibility(viewId);
-            
-            // Update home upload button
             updateHomeUploadButton();
-            
-            // Scroll to top
             document.querySelector('main').scrollTop = 0;
         }
         
@@ -1617,11 +1621,9 @@
                 showView('manage', document.querySelectorAll('#adminMenu .admin-menu-item')[1]);
                 render();
                 
-                // Show success notification
                 showNotification('🎉 Selamat datang Admin!', 'success');
             } else {
                 showNotification('❌ PIN salah! Coba lagi.', 'error');
-                // Add shake animation to input
                 const pinInput = document.getElementById('pinInput');
                 pinInput.style.animation = 'shake 0.5s ease';
                 setTimeout(() => {
@@ -1692,7 +1694,6 @@
                         document.getElementById('filePreview').style.display = 'block';
                         document.getElementById('fileName').innerText = `📁 ${fileName} (${fileSize}MB)`;
                         
-                        // Update upload area
                         document.getElementById('uploadArea').innerHTML = 
                             `<i class="fas fa-check-circle" style="font-size: 3.5rem; color: var(--success); margin-bottom: 20px;"></i>
                              <h3 style="color: var(--success); margin-bottom: 12px; font-size: 1.5rem;">
@@ -1731,7 +1732,6 @@
                 if (error) {
                     console.error('❌ Supabase error:', error);
                     
-                    // Fallback to localStorage jika ada
                     const localData = loadFromLocalStorage('k3_blossom_db') || [];
                     console.log('🔄 Fallback to localStorage:', localData.length, 'items');
                     
@@ -1746,24 +1746,18 @@
                 }
                 
                 if (data && data.length > 0) {
-                    // Transform data dengan gambar unik
                     db = data.map((item, index) => ({
                         id: item.id,
                         title: item.title || 'Tanpa Judul',
                         content: item.content || 'Konten kosong',
-                        // Jika image kosong/null, generate gambar unik
-                        image: item.image && item.image.trim() !== '' 
-                            ? item.image 
-                            : getRandomK3Image(),
+                        image: item.image && item.image.trim() !== '' ? item.image : getRandomK3Image(),
                         createdAt: item.created_at || new Date().toISOString(),
                         updatedAt: item.updated_at || new Date().toISOString()
                     }));
                     
-                    console.log('✅ Transformed data:', db);
+                    console.log('✅ Transformed data:', db.length, 'items');
                     
-                    // Save to localStorage (dengan error handling)
                     saveToLocalStorage('k3_blossom_db', db);
-                    console.log('✅ Data loaded successfully:', db.length, 'items');
                     
                     render();
                 } else {
@@ -1779,7 +1773,7 @@
         
         async function saveToSupabase(payload) {
             try {
-                console.log('💾 Saving to Supabase:', payload);
+                console.log('💾 Saving to Supabase:', payload.title);
                 
                 if (!supabaseClient) {
                     throw new Error('Supabase tidak terinisialisasi');
@@ -1796,7 +1790,6 @@
                 let result;
                 
                 if (currentEditId) {
-                    // Update existing
                     const { data, error } = await supabaseClient
                         .from('materi_k3')
                         .update(dataToSave)
@@ -1806,7 +1799,6 @@
                     if (error) throw error;
                     result = data?.[0];
                 } else {
-                    // Insert new
                     const { data, error } = await supabaseClient
                         .from('materi_k3')
                         .insert([dataToSave])
@@ -1910,7 +1902,6 @@
             document.getElementById('filePreview').style.display = 'none';
             document.getElementById('fFile').value = '';
             
-            // Reset upload area
             document.getElementById('uploadArea').innerHTML = 
                 `<i class="fas fa-cloud-upload-alt"></i>
                  <h3>Upload Gambar Utama</h3>
@@ -1943,13 +1934,11 @@
                     id: currentEditId || Date.now(),
                     title, 
                     content,
-                    // Gunakan gambar yang diupload, atau gambar random
                     image: img || getRandomK3Image(),
                     createdAt: currentEditId ? db.find(i => i.id === currentEditId)?.createdAt : now,
                     updatedAt: now
                 };
         
-                // Save to Supabase
                 const supabaseResult = await saveToSupabase(payload);
                 
                 if (supabaseResult.success) {
@@ -1964,13 +1953,10 @@
                         showNotification('✅ Materi berhasil ditambahkan!', 'success');
                     }
         
-                    // Update local storage (dengan error handling)
                     saveToLocalStorage('k3_blossom_db', db);
                     
-                    // Reload data
                     await loadFromSupabase();
                 } else {
-                    // Fallback to local storage
                     if(currentEditId) {
                         const idx = db.findIndex(i => i.id === currentEditId);
                         if(idx > -1) {
@@ -1980,14 +1966,12 @@
                         db.unshift(payload);
                     }
                     
-                    // Coba simpan ke localStorage
                     const saved = saveToLocalStorage('k3_blossom_db', db);
                     
                     if (saved) {
                         render();
                         showNotification('⚠️ ' + (supabaseResult.error || 'Gagal menyimpan ke server, disimpan secara lokal'), 'warning');
                     } else {
-                        // Jika tidak bisa simpan ke localStorage, tetap render dari memory
                         render();
                         showNotification('⚠️ Gagal menyimpan ke server dan penyimpanan lokal', 'error');
                     }
@@ -2136,7 +2120,6 @@
         async function deleteItem(id) {
             if(!confirm('Hapus materi ini?\n\nTindakan ini tidak dapat dibatalkan.')) return;
             
-            // Delete from Supabase
             const supabaseResult = await deleteFromSupabase(id);
             
             if (supabaseResult.success) {
@@ -2145,7 +2128,6 @@
                 render();
                 showNotification('🗑️ Materi berhasil dihapus!', 'success');
             } else {
-                // Fallback to local storage
                 db = db.filter(i => i.id !== id);
                 const saved = saveToLocalStorage('k3_blossom_db', db);
                 
@@ -2166,7 +2148,6 @@
         
         // ===== NOTIFICATION =====
         function showNotification(message, type = 'info') {
-            // Remove existing notification
             const existing = document.querySelector('.notification');
             if(existing) existing.remove();
             
@@ -2217,7 +2198,6 @@
                     localStorage.removeItem('k3_theme');
                     showNotification('🧹 Data lokal dibersihkan!', 'success');
                     
-                    // Reload data dari Supabase
                     loadFromSupabase();
                 } catch (error) {
                     showNotification('❌ Gagal membersihkan data lokal', 'error');
@@ -2225,18 +2205,12 @@
             }
         }
         
-        // Untuk debug: tambahkan tombol di Console
-        window.clearStorage = clearLocalStorage;
-        window.getRandomImage = getRandomK3Image;
-        
         // ===== INITIALIZATION =====
         async function init() {
             console.log('🚀 Initializing application...');
             
-            // Load theme
             loadTheme();
             
-            // Initialize Supabase
             const supabaseInitialized = initSupabase();
             
             if (!supabaseInitialized) {
@@ -2247,10 +2221,8 @@
             
             console.log('✅ Application initialized');
             
-            // Load data
             await loadFromSupabase();
             
-            // Add animations
             const style = document.createElement('style');
             style.textContent = `
                 @keyframes slideIn {
@@ -2269,9 +2241,7 @@
             `;
             document.head.appendChild(style);
             
-            // Keyboard shortcuts
             document.addEventListener('keydown', (e) => {
-                // Ctrl+S to save
                 if((e.ctrlKey || e.metaKey) && e.key === 's') {
                     e.preventDefault();
                     if(document.getElementById('view-editor').classList.contains('active')) {
@@ -2279,22 +2249,32 @@
                     }
                 }
                 
-                // Escape to close modals
                 if(e.key === 'Escape') {
                     closeDetail();
                     document.getElementById('lightbox').style.display = 'none';
                     closePin();
                 }
                 
-                // Enter to submit pin
                 if(e.key === 'Enter' && document.getElementById('pinModal').style.display === 'flex') {
                     verifyPin();
                 }
             });
         }
         
-        // Start the application
         document.addEventListener('DOMContentLoaded', init);
+        
+        // Untuk debugging di console
+        window.clearStorage = clearLocalStorage;
+        window.getData = () => db;
+        window.getLocalStorageSize = () => {
+            let total = 0;
+            for(let key in localStorage) {
+                if(localStorage.hasOwnProperty(key)) {
+                    total += localStorage[key].length * 2;
+                }
+            }
+            return (total / 1024 / 1024).toFixed(2) + ' MB';
+        };
     </script>
 </body>
 </html>
