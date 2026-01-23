@@ -31,6 +31,7 @@
             --success: #22c55e;
             --danger: #ef4444;
             --warning: #f59e0b;
+            --blue: #2563eb; /* Tambahkan warna biru untuk bold text */
         }
 
         :root[data-theme="dark"] {
@@ -52,6 +53,7 @@
             --success: #4ade80;
             --danger: #f87171;
             --warning: #fbbf24;
+            --blue: #3b82f6; /* Tambahkan warna biru untuk dark theme */
         }
 
         /* ===== LOADING SPINNER ===== */
@@ -1034,12 +1036,21 @@
             margin-bottom: 0.5em;
         }
 
-        .materi-content strong {
-            color: var(--hot-pink);
+        /* PERUBAHAN: Warna bold/strong menjadi biru */
+        .materi-content strong,
+        .materi-content b {
+            color: var(--blue); /* Warna biru untuk teks bold */
+            font-weight: 700;
         }
 
         .materi-content em {
             color: var(--purple);
+        }
+
+        /* Warna bold di editor juga biru */
+        #fEditor strong,
+        #fEditor b {
+            color: var(--blue); /* Warna biru untuk teks bold di editor */
         }
 
         /* ===== RESPONSIVE ===== */
